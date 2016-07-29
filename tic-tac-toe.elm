@@ -7,7 +7,9 @@ import Html.App as Html
 import String
 import String exposing (length, toInt)
 import Array exposing (Array, fromList, push, get, set, indexedMap, map, slice, append, foldr)
-import List 
+import List
+import Mouse
+import Random
 
 -- ALIASES
 
@@ -50,24 +52,78 @@ board =
 
 type alias Model =
     { board : Board
+    , list : List Bool
     }
 
 initModel : Model
 initModel =
     { board = board
+    , list = []
     }
+
+init : (Model, Cmd Msg)
+init =
+    (initModel, Cmd.none)
 
 -- UPDATE
 
 type Msg
     = Empty
+    | GenerateNewBoard
+    | MouseMsg Mouse.Position
+    | CreateBoard (List Bool)
 
 -- update : Msg -> Model -> Model
 
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         Empty ->
-            model
+            (model, Cmd.none)
+
+        GenerateNewBoard ->
+            (model, Random.generate CreateBoard (Random.list 18 Random.bool))
+
+        CreateBoard list ->
+            (Model (createBoard list) list, Cmd.none)
+
+        MouseMsg position ->
+            (model, Cmd.none)
+
+createBoard : List Bool -> Board
+createBoard list =
+    let 
+        justOrNothing = list
+                        |> List.take 9
+                        
+        crossOrZero =  list
+                        |> List.drop 9
+                        |> List.take 9
+            
+    in
+        fromList
+            ( List.map2
+                (\ just cross ->
+                    if just == True && cross == True then
+                        Just True
+                    else if just == True && cross == False then
+                        Just False
+                    else
+                        Nothing
+                )
+                justOrNothing
+                crossOrZero
+            )
+        
+
+-- SUBSCRIPTIONS
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Mouse.clicks MouseMsg
+        ]
+
 
 -- VIEW
 
@@ -97,34 +153,54 @@ displayRow board =
         ""
     |> text
 
-view : Model -> Html msg
+view : Model -> Html Msg
 view model = 
     pre []
         [ div []
             [ displayRow
                 ( slice
                     0 3
-                    board
+                    model.board
                 )
             ]
         , div []
             [ displayRow
                 ( slice
                     3 6
-                    board
+                    model.board
                 )
             ]
         , div []
             [ displayRow
                 ( slice
                     6 9
-                    board
+                    model.board
                 )
-            ]          
-        ]
-            
+            ]
+        , div []
+            [ text (model.list
+                        |> List.map
+                            (\ elm ->
+                                if elm == True then
+                                    "T"
+                                else
+                                    "F"
+                            )
+                        |> List.foldr
+                            (++)
+                            ""
+                    )
+            ]
+        , button
+            [ onClick GenerateNewBoard ]
+            [ text "Generate Random Board" ]           
+        ]            
 
 main =
-    Html.beginnerProgram { model = initModel, view = view, update = update }
+    Html.program { init = init
+                    , view = view
+                    , update = update
+                    , subscriptions = subscriptions
+                }
 
 
