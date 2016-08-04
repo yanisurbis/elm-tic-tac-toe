@@ -28,50 +28,6 @@ board =
         , Nothing, Nothing, Nothing
         ]
 
-
--- filterElements: List (Maybe (Maybe Bool)) -> List (Maybe Bool)
--- filterElements elements =
---     let
---         convert1 : List ((Maybe Bool), Bool)
---         convert1 = List.map
---                         (\elm ->
---                             case elm of 
---                                 Just value ->
---                                     (value, True)
-
---                                 Nothing ->
---                                     (False, False)
---                         )
---                         elements
---     in
---     elements
---         -- |> List.map
---         --     (\elm ->
---         --         case elm of 
---         --             Just value ->
---         --                 (value, True)
-
---         --             Nothing ->
---         --                 (False, False)
---         --     )
---         -- |> List.filter
---         --     (\elm ->
---         --         case elm of
---         --             (_, True) ->
---         --                 True
-                    
---         --             (_, False) ->
---         --                 False
---         --     )
---         -- |> List.map 
---         --     (\elm ->
---         --         case elm of
---         --             (value, True) ->
---         --                 value
---         --     )
-
-
-
 getElementsFromBoard : Board -> List Int -> List (Maybe (Maybe Bool))
 getElementsFromBoard board pathToCheck =
     let
@@ -157,8 +113,17 @@ checkPath board pathToCheck =
             Nothing
         else if allCrosses == True then
             Just True
-        else 
+        else if allZeros == True then
             Just False
+        else
+            Nothing
+
+
+
+
+
+
+
 
 
 
@@ -371,6 +336,17 @@ view model =
                             (++)
                             ""
                     )
+            ]
+        , h1 []
+            [ case isFinished model.board of
+                (True, True) ->
+                    text ("Cross and Zeros")
+                (True, False) ->
+                    text ("Cross only")
+                (False, True) ->
+                    text ("Zeros only")
+                (False, False) ->
+                    text ("Nobody")
             ]
         , button
             [ onClick GenerateNewBoard ]
