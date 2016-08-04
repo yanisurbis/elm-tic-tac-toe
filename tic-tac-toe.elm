@@ -5,8 +5,8 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Html.App as Html
 import String
-import String exposing (length, toInt)
-import Array exposing (Array, fromList, push, get, set, indexedMap, map, slice, append, foldr)
+import String
+import Array exposing (Array)
 import List
 import Mouse
 import Random
@@ -17,48 +17,229 @@ import Random
 
 -- BOARD AND METHODS
 
--- path to check to understand if the gase is ended
-pathsToCheck : List (List Int)
-pathsToCheck =
-    -- horizontal
-    [ [0, 1, 2]
-    , [3, 4, 5]
-    , [6, 7, 8]
-    -- vertical
-    , [0, 3, 6]
-    , [1, 4, 7]
-    , [2, 5, 8]
-    -- cross
-    , [0, 4, 8]
-    , [6, 4, 2]
-    ]
-
-
 type alias Board =
     Array.Array (Maybe Bool)
 
 board : Board
 board =
-    fromList
+    Array.fromList
         [ Just True, Just False, Nothing
         , Nothing, Nothing, Nothing
-        , Nothing, Nothing, Nothing]
+        , Nothing, Nothing, Nothing
+        ]
 
--- check : Board -> List List Int -> Cell -> Cell
 
--- isFinised : Board -> Bool
+-- filterElements: List (Maybe (Maybe Bool)) -> List (Maybe Bool)
+-- filterElements elements =
+--     let
+--         convert1 : List ((Maybe Bool), Bool)
+--         convert1 = List.map
+--                         (\elm ->
+--                             case elm of 
+--                                 Just value ->
+--                                     (value, True)
+
+--                                 Nothing ->
+--                                     (False, False)
+--                         )
+--                         elements
+--     in
+--     elements
+--         -- |> List.map
+--         --     (\elm ->
+--         --         case elm of 
+--         --             Just value ->
+--         --                 (value, True)
+
+--         --             Nothing ->
+--         --                 (False, False)
+--         --     )
+--         -- |> List.filter
+--         --     (\elm ->
+--         --         case elm of
+--         --             (_, True) ->
+--         --                 True
+                    
+--         --             (_, False) ->
+--         --                 False
+--         --     )
+--         -- |> List.map 
+--         --     (\elm ->
+--         --         case elm of
+--         --             (value, True) ->
+--         --                 value
+--         --     )
+
+
+
+getElementsFromBoard : Board -> List Int -> List (Maybe (Maybe Bool))
+getElementsFromBoard board pathToCheck =
+    let
+        elements: List (Maybe (Maybe Bool))
+        elements =
+            pathToCheck
+                |> List.map
+                    (\elm -> 
+                        Array.get elm board
+                    )
+    in
+        elements
+
+-- check one path from pathsToCheck
+checkPath : Board -> List Int -> Maybe Bool
+checkPath board pathToCheck =
+    -- list of indexes
+    let
+        -- get elements from board that are complied with path
+        elementsFromBoard : List (Maybe (Maybe Bool))
+        elementsFromBoard =
+            getElementsFromBoard
+                board
+                pathToCheck
+        
+        -- we don't want maybe around maybe 
+        unwrappedElementsFromBoard : List (Maybe Bool)
+        unwrappedElementsFromBoard =
+            elementsFromBoard
+            |> List.map
+                (\ elm ->
+                    case elm of
+                        Just value ->
+                            value
+                        
+                        Nothing ->
+                            Nothing
+                )
+
+        hasNothing =
+            unwrappedElementsFromBoard
+            |> List.any
+                (\ elm ->
+                    case elm of
+                        Nothing ->
+                            True
+                        
+                        Just value ->
+                            False
+                ) 
+
+        allCrosses = 
+            unwrappedElementsFromBoard
+            |> List.all
+                (\elm ->
+                    case elm of
+                        Just value ->
+                            if value == True then
+                                True
+                            else
+                                False
+                        
+                        Nothing ->
+                            False
+                )
+
+        allZeros = 
+            unwrappedElementsFromBoard
+            |> List.all
+                (\elm ->
+                    case elm of
+                        Just value ->
+                            if value == True then
+                                False
+                            else
+                                True
+                        
+                        Nothing ->
+                            False
+                )
+    in
+        if hasNothing == True then
+            Nothing
+        else if allCrosses == True then
+            Just True
+        else 
+            Just False
+
+
+
+checkBoard : Board -> List (List Int) -> Bool -> Bool
+checkBoard board pathsToCheck winner =
+    let 
+        rezultOfCheck : List (Maybe Bool)
+        rezultOfCheck = 
+            pathsToCheck
+            -- check every path
+            |> List.map 
+                (checkPath board)
+    in
+        rezultOfCheck
+        |> List.any
+            (\ elm ->
+                case elm of
+                    Just value ->
+                        if value == winner then
+                            True
+                        else
+                            False
+                    Nothing ->
+                        False                    
+            )
+       
+
+-- is game finished?
+isFinished : Board -> (Bool, Bool)
+isFinished board =
+    let 
+        -- path to check to understand if the game is ended
+        pathsToCheck : List (List Int)
+        pathsToCheck =
+            -- horizontal
+            [ [0, 1, 2]
+            , [3, 4, 5]
+            , [6, 7, 8]
+
+            -- vertical
+            , [0, 3, 6]
+            , [1, 4, 7]
+            , [2, 5, 8]
+
+            -- cross
+            , [0, 4, 8]
+            , [6, 4, 2]
+            ]
+        
+        -- to understand if cross is winner current board we neeed
+        --                                      board
+        --                                      paths to check
+        --                                      corresponding values for cross = True
+
+        crossIsWinner : Bool
+        crossIsWinner = checkBoard
+                            board
+                            pathsToCheck
+                            True
+        
+        zeroIsWinner : Bool
+        zeroIsWinner = checkBoard
+                            board
+                            pathsToCheck
+                            False
+    in
+        (crossIsWinner, zeroIsWinner)
 
 -- MODEL
 
 type alias Model =
     { board : Board
     , list : List Bool
+    , winner : Maybe Bool
     }
 
 initModel : Model
 initModel =
     { board = board
     , list = []
+    , winner = Nothing
     }
 
 init : (Model, Cmd Msg)
@@ -85,7 +266,7 @@ update msg model =
             (model, Random.generate CreateBoard (Random.list 18 Random.bool))
 
         CreateBoard list ->
-            (Model (createBoard list) list, Cmd.none)
+            (Model (createBoard list) list model.winner, Cmd.none)
 
         MouseMsg position ->
             (model, Cmd.none)
@@ -101,7 +282,7 @@ createBoard list =
                         |> List.take 9
             
     in
-        fromList
+        Array.fromList
             ( List.map2
                 (\ just cross ->
                     if just == True && cross == True then
@@ -137,7 +318,7 @@ cellToString boolValue =
 displayRow : Board -> Html msg
 displayRow board = 
     board
-    |> indexedMap
+    |> Array.indexedMap
         (\ index cell ->
             case cell of
                 Just value ->
@@ -148,7 +329,7 @@ displayRow board =
                 Nothing ->
                     "_ "
         )
-    |> foldr
+    |> Array.foldr
         (++)
         ""
     |> text
@@ -158,21 +339,21 @@ view model =
     pre []
         [ div []
             [ displayRow
-                ( slice
+                ( Array.slice
                     0 3
                     model.board
                 )
             ]
         , div []
             [ displayRow
-                ( slice
+                ( Array.slice
                     3 6
                     model.board
                 )
             ]
         , div []
             [ displayRow
-                ( slice
+                ( Array.slice
                     6 9
                     model.board
                 )
