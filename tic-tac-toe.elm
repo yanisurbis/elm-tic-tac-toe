@@ -28,6 +28,7 @@ board =
         , Nothing, Nothing, Nothing
         ]
 
+-- get elements from board by list
 getElementsFromBoard : Board -> List Int -> List (Maybe (Maybe Bool))
 getElementsFromBoard board pathToCheck =
     let
@@ -192,6 +193,12 @@ isFinished board =
     in
         (crossIsWinner, zeroIsWinner)
 
+
+
+
+
+-- AI
+
 -- MODEL
 
 type alias Model =
@@ -299,30 +306,33 @@ displayRow board =
         ""
     |> text
 
+numberOfElementInRow = 3
+
+displayBoard : Board -> Html a
+displayBoard board =
+    let
+        numberOfRows = Array.length board // numberOfElementInRow
+
+        rowsOfBoard =
+            (List.repeat numberOfRows 0)
+            |> List.indexedMap
+                (\ index _ -> 
+                    div []
+                        [ displayRow
+                            ( Array.slice
+                                (index * numberOfRows)
+                                ((index + 1) * numberOfRows)
+                                board
+                            )
+                        ]
+                )
+    in
+        div [] rowsOfBoard
+
 view : Model -> Html Msg
 view model = 
     pre []
-        [ div []
-            [ displayRow
-                ( Array.slice
-                    0 3
-                    model.board
-                )
-            ]
-        , div []
-            [ displayRow
-                ( Array.slice
-                    3 6
-                    model.board
-                )
-            ]
-        , div []
-            [ displayRow
-                ( Array.slice
-                    6 9
-                    model.board
-                )
-            ]
+        [ displayBoard model.board
         , div []
             [ text (model.list
                         |> List.map
