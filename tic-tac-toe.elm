@@ -1,4 +1,4 @@
-module RealApp exposing (..)
+-- module RealApp exposing (..)
 
 import Html exposing (..) 
 import Html.Attributes exposing (..)
@@ -24,7 +24,7 @@ type alias Board =
 board : Board
 board =
     Array.fromList
-        [ Just True, Just False, Nothing
+        [ Nothing, Nothing, Nothing
         , Nothing, Nothing, Nothing
         , Nothing, Nothing, Nothing
         ]
@@ -122,13 +122,6 @@ checkPath board pathToCheck =
 
 
 
-
-
-
-
-
-
-
 checkBoard : Board -> List (List Int) -> Bool -> Bool
 checkBoard board pathsToCheck winner =
     let 
@@ -191,8 +184,24 @@ isFinished board =
                             board
                             pathsToCheck
                             False
+
+        boardIsFull
+            = board
+            |> Array.toList
+            |> List.all
+                (\ elm ->
+                    case elm of
+                        Just value ->
+                            True
+                    
+                        Nothing ->
+                            False
+                )
     in
-        (crossIsWinner, zeroIsWinner)
+        if boardIsFull then
+            (True, True)
+        else
+            (crossIsWinner, zeroIsWinner)
 
 
 showAllAvalibleMoves : Board -> Bool -> List Board
@@ -235,12 +244,101 @@ changeBoard board index currentPlayer =
 
 -- AI
 
+changePlayer : Bool -> Bool
+changePlayer player =
+    if player == True then
+        False
+    else
+        True
+
+miniMax : Board -> Bool -> Int
+miniMax board currentPlayer =
+    case (isFinished board) of
+        (True, True) ->
+            0
+        
+        (True, False) ->
+            if currentPlayer == True then
+                10
+            else
+                -10
+        
+        (False, True) ->
+            if currentPlayer == False then
+                -10
+            else
+                10
+        
+        (False, False) ->
+            let 
+                boardsWithAvailibleMoves = showAllAvalibleMoves
+                                                board 
+                                                (changePlayer currentPlayer)
+
+                miniMaxResults = boardsWithAvailibleMoves
+                                    |> List.map
+                                        (\ elm ->
+                                            ( elm
+                                            , miniMax
+                                                board
+                                                (changePlayer currentPlayer)
+                                            )  
+                                        )
+
+                maximum = findMaxFromBoards
+                            miniMaxResults
+                            (board, -1)                                    
+            in
+                snd maximum
+
+findMaxFromBoards : List (Board, Int) -> (Board, Int) -> (Board, Int)
+findMaxFromBoards boards startElement =
+    let 
+
+        maxElement
+            = List.foldl
+                (\ elm startValue ->
+                    if snd elm > snd startValue then
+                        elm
+                    else
+                        startValue
+                )
+                startElement
+                boards
+
+    in
+        maxElement
+
+startMiniMax : Board -> Bool -> Board
+startMiniMax board currentPlayer =
+    let 
+        boardsWithAvailibleMoves = showAllAvalibleMoves
+                                                board 
+                                                (changePlayer currentPlayer)
+
+        miniMaxResultsWithBoards = boardsWithAvailibleMoves
+                            |> List.map
+                                (\ elm ->
+                                    ( elm
+                                    , miniMax
+                                        board
+                                        (changePlayer currentPlayer)
+                                    )  
+                                )
+        
+        maximum = findMaxFromBoards
+                            miniMaxResultsWithBoards  
+                            (board, -1)
+    in
+        fst maximum
+
 -- MODEL
 
 type alias Model =
     { board : Board
     , list : List Bool
     , winner : Maybe Bool
+    , currentMove : Bool
     }
 
 initModel : Model
@@ -248,6 +346,7 @@ initModel =
     { board = board
     , list = []
     , winner = Nothing
+    , currentMove = True
     }
 
 init : (Model, Cmd Msg)
@@ -261,6 +360,7 @@ type Msg
     | GenerateNewBoard
     | MouseMsg Mouse.Position
     | CreateBoard (List Bool)
+    | Choose Board
 
 -- update : Msg -> Model -> Model
 
@@ -274,10 +374,20 @@ update msg model =
             (model, Random.generate CreateBoard (Random.list 18 Random.bool))
 
         CreateBoard list ->
-            (Model (createBoard list) list model.winner, Cmd.none)
+            (Model (createBoard list) list model.winner model.currentMove, Cmd.none)
 
         MouseMsg position ->
             (model, Cmd.none)
+
+        Choose board ->
+            ({model | board = board
+                    , currentMove = False
+                    , list = model.list
+                    , winner = model.winner
+                }
+                , Cmd.none
+            )
+        
 
 createBoard : List Bool -> Board
 createBoard list =
@@ -344,7 +454,7 @@ displayRow board =
 
 numberOfElementInRow = 3
 
-displayBoard : Board -> Html a
+displayBoard : Board -> Html Msg
 displayBoard board =
     let
         numberOfRows = Array.length board // numberOfElementInRow
@@ -368,6 +478,9 @@ displayBoard board =
                     [ text "++++++++++++++++++++++++++++++++++++++=="]
                 , div []
                     rowsOfBoard
+                , button 
+                    [ onClick (Choose board) ]
+                    [ text "choose this board" ]
             ]
 
 view : Model -> Html Msg
