@@ -17,6 +17,7 @@ import Random
 
 -- BOARD AND METHODS
 
+
 type alias Board =
     Array.Array (Maybe Bool)
 
@@ -194,8 +195,43 @@ isFinished board =
         (crossIsWinner, zeroIsWinner)
 
 
+showAllAvalibleMoves : Board -> Bool -> List Board
+showAllAvalibleMoves board currentPlayer =
+    board
+    |> Array.toList
+    |> List.indexedMap
+        (\ index elm ->
+            case elm of
+                Just value ->
+                    Nothing
+                Nothing ->
+                    Just (changeBoard board index currentPlayer)
+        )
+    |> List.filterMap
+        (\ elm ->
+            case elm of
+                Just value ->
+                    Just value
+                
+                Nothing ->
+                    Nothing
+        )
 
 
+changeBoard : Board -> Int -> Bool -> Board
+changeBoard board index currentPlayer =
+    case currentPlayer of
+        True ->
+            Array.set 
+                index
+                (Just True)
+                board
+        
+        False ->
+            Array.set
+                index
+                (Just False)
+                board
 
 -- AI
 
@@ -327,12 +363,43 @@ displayBoard board =
                         ]
                 )
     in
-        div [] rowsOfBoard
+        div []
+            [   div []
+                    [ text "++++++++++++++++++++++++++++++++++++++=="]
+                , div []
+                    rowsOfBoard
+            ]
 
 view : Model -> Html Msg
 view model = 
     pre []
-        [ displayBoard model.board
+    (
+        
+        ((showAllAvalibleMoves 
+                    model.board
+                    True
+                    )
+                |> List.map
+                    displayBoard
+            )
+        |> List.append
+            [ h1 []
+                [ case isFinished model.board of
+                    (True, True) ->
+                        text ("Cross and Zeros")
+                    (True, False) ->
+                        text ("Cross only")
+                    (False, True) ->
+                        text ("Zeros only")
+                    (False, False) ->
+                        text ("Nobody")
+                ]
+            , button
+                [ onClick GenerateNewBoard ]
+                [ text "Generate Random Board" ]           
+            ]      
+        |> List.append
+        ([ displayBoard model.board
         , div []
             [ text (model.list
                         |> List.map
@@ -347,22 +414,9 @@ view model =
                             ""
                     )
             ]
-        , h1 []
-            [ case isFinished model.board of
-                (True, True) ->
-                    text ("Cross and Zeros")
-                (True, False) ->
-                    text ("Cross only")
-                (False, True) ->
-                    text ("Zeros only")
-                (False, False) ->
-                    text ("Nobody")
-            ]
-        , button
-            [ onClick GenerateNewBoard ]
-            [ text "Generate Random Board" ]           
-        ]            
-
+        ])
+                  
+    )
 main =
     Html.program { init = init
                     , view = view
