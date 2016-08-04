@@ -10,6 +10,7 @@ import Array exposing (Array)
 import List
 import Mouse
 import Random
+import Debug
 
 -- ALIASES
 
@@ -29,6 +30,14 @@ board =
         , Nothing, Nothing, Nothing
         ]
 
+fakeBoard : Board
+fakeBoard =
+    Array.fromList
+        [ Nothing, Nothing, Nothing
+        , Nothing, Nothing, Nothing
+        , Nothing, Nothing, Nothing
+        ] 
+
 -- get elements from board by list
 getElementsFromBoard : Board -> List Int -> List (Maybe (Maybe Bool))
 getElementsFromBoard board pathToCheck =
@@ -42,6 +51,8 @@ getElementsFromBoard board pathToCheck =
                     )
     in
         elements
+
+
 
 -- check one path from pathsToCheck
 checkPath : Board -> List Int -> Maybe Bool
@@ -147,7 +158,30 @@ checkBoard board pathsToCheck winner =
        
 
 -- is game finished?
-isFinished : Board -> (Bool, Bool)
+
+
+
+boardIsFull : Board -> Bool
+boardIsFull board =
+    board
+        |> Array.toList
+        |> List.all
+            (\ elm ->
+                case elm of
+                    Just value ->
+                        True
+                
+                    Nothing ->
+                        False
+            )
+
+type alias BoardParams =
+    { boardIsFull : Bool
+    , xIsWinner : Bool
+    , oIsWinner : Bool
+    }
+
+isFinished : Board -> BoardParams
 isFinished board =
     let 
         -- path to check to understand if the game is ended
@@ -173,35 +207,26 @@ isFinished board =
         --                                      paths to check
         --                                      corresponding values for cross = True
 
-        crossIsWinner : Bool
-        crossIsWinner = checkBoard
-                            board
-                            pathsToCheck
-                            True
+        xIsWinner : Bool
+        xIsWinner = checkBoard
+                        board
+                        pathsToCheck
+                        True
         
-        zeroIsWinner : Bool
-        zeroIsWinner = checkBoard
-                            board
-                            pathsToCheck
-                            False
+        oIsWinner : Bool
+        oIsWinner = checkBoard
+                        board
+                        pathsToCheck
+                        False
 
-        boardIsFull
-            = board
-            |> Array.toList
-            |> List.all
-                (\ elm ->
-                    case elm of
-                        Just value ->
-                            True
-                    
-                        Nothing ->
-                            False
-                )
+        -- is there any availible moves?
+        isFull = boardIsFull
+                    board
     in
-        if boardIsFull then
-            (True, True)
-        else
-            (crossIsWinner, zeroIsWinner)
+        { boardIsFull = isFull
+        , xIsWinner = xIsWinner
+        , oIsWinner = oIsWinner
+        }
 
 
 showAllAvalibleMoves : Board -> Bool -> List Board
@@ -312,11 +337,13 @@ findMaxFromBoards boards startElement =
 startMiniMax : Board -> Bool -> Board
 startMiniMax board currentPlayer =
     let 
+        -- show all availible next moves
         boardsWithAvailibleMoves = showAllAvalibleMoves
                                                 board 
                                                 (changePlayer currentPlayer)
 
-        miniMaxResultsWithBoards = boardsWithAvailibleMoves
+        --                                                 
+        miniMaxResultsWithBoards = (Debug.log "" boardsWithAvailibleMoves)
                             |> List.map
                                 (\ elm ->
                                     ( elm
@@ -328,7 +355,7 @@ startMiniMax board currentPlayer =
         
         maximum = findMaxFromBoards
                             miniMaxResultsWithBoards  
-                            (board, -1)
+                            (fakeBoard, -1)
     in
         fst maximum
 
@@ -361,6 +388,7 @@ type Msg
     | MouseMsg Mouse.Position
     | CreateBoard (List Bool)
     | Choose Board
+    | AImove
 
 -- update : Msg -> Model -> Model
 
@@ -387,6 +415,17 @@ update msg model =
                 }
                 , Cmd.none
             )
+
+        AImove ->
+            ({model | board
+                        = startMiniMax
+                            model.board
+                            model.currentMove
+                    , currentMove = True
+                    , list = model.list
+                    , winner = model.winner
+            }, Cmd.none)
+            -- (model, Cmd.none)
         
 
 createBoard : List Bool -> Board
@@ -513,6 +552,9 @@ view model =
             ]      
         |> List.append
         ([ displayBoard model.board
+        , button 
+            [ onClick AImove ]
+            [ text "AI move" ]
         , div []
             [ text (model.list
                         |> List.map
