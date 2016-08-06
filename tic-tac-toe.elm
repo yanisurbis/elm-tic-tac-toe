@@ -38,7 +38,7 @@ fakeBoard =
         , Nothing, Nothing, Nothing
         ] 
 
--- get elements from board by list
+-- get elements from board 
 getElementsFromBoard : Board -> List Int -> List (Maybe (Maybe Bool))
 getElementsFromBoard board pathToCheck =
     let
@@ -160,7 +160,7 @@ checkBoard board pathsToCheck winner =
 -- is game finished?
 
 
-
+-- all elements should be non empty
 boardIsFull : Board -> Bool
 boardIsFull board =
     board
@@ -175,14 +175,14 @@ boardIsFull board =
                         False
             )
 
-type alias BoardParams =
+type alias GameStatus =
     { boardIsFull : Bool
     , xIsWinner : Bool
     , oIsWinner : Bool
     }
 
-isFinished : Board -> BoardParams
-isFinished board =
+getGameStatus : Board -> GameStatus
+getGameStatus board =
     let 
         -- path to check to understand if the game is ended
         pathsToCheck : List (List Int)
@@ -229,8 +229,8 @@ isFinished board =
         }
 
 
-showAllAvalibleMoves : Board -> Bool -> List Board
-showAllAvalibleMoves board currentPlayer =
+getAllAvailableMoves : Board -> Bool -> List Board
+getAllAvailableMoves board currentPlayer =
     board
     |> Array.toList
     |> List.indexedMap
@@ -276,37 +276,56 @@ changePlayer player =
     else
         True
 
-miniMax : Board -> Bool -> Int
-miniMax board currentPlayer =
-    case (isFinished board) of
-        (True, True) ->
+
+miniMax : Board -> Bool -> (Board, Int)
+miniMax board xShouldWin =
+    let
+        {xIsWinner, oIsWinner, boardIsFull} = getGameStatus board
+    in
+        -- error
+        if xIsWinner == True 
+            && oIsWinner == True then
+            -1
+
+        -- the end, smbd is the winner
+        else if xIsWinner == True 
+                && xShouldWin == True then
+            10
+        else if xIsWinner == True 
+                && xShouldWin == False then
+            -10
+        else if oIsWinner == True 
+                && xShouldWin == True then
+            -10
+        else if oIsWinner == True 
+                && xShouldWin == False then
+            10
+
+        -- the end, nobody is the winner
+        else if boardIsFull == True 
+                && oIsWinner == False 
+                && xIsWinner == False then
             0
-        
-        (True, False) ->
-            if currentPlayer == True then
-                10
-            else
-                -10
-        
-        (False, True) ->
-            if currentPlayer == False then
-                -10
-            else
-                10
-        
-        (False, False) ->
+
+        -- NOT the end, run minimax
+        else if boardIsFull == False
+                && oIsWinner == False
+                && xIsWinner == False then
             let 
-                boardsWithAvailibleMoves = showAllAvalibleMoves
+                boardsWithAvailibleMoves = getAllAvailableMoves
                                                 board 
-                                                (changePlayer currentPlayer)
+                                                (changePlayer xShouldWin)
 
                 miniMaxResults = boardsWithAvailibleMoves
                                     |> List.map
-                                        (\ elm ->
-                                            ( elm
-                                            , miniMax
-                                                board
-                                                (changePlayer currentPlayer)
+                                        (\ boardWithNewMove ->
+                                            -- boar
+                                            ( boardWithNewMove
+                                            -- snd because miniMax returns tuple
+                                            , snd 
+                                                miniMax
+                                                    boardWithNewMove
+                                                    (changePlayer xShouldWin)
                                             )  
                                         )
 
@@ -314,7 +333,13 @@ miniMax board currentPlayer =
                             miniMaxResults
                             (board, -1)                                    
             in
-                snd maximum
+                maximum
+        
+        -- error
+        else 
+            -1
+
+   
 
 findMaxFromBoards : List (Board, Int) -> (Board, Int) -> (Board, Int)
 findMaxFromBoards boards startElement =
@@ -334,30 +359,7 @@ findMaxFromBoards boards startElement =
     in
         maxElement
 
-startMiniMax : Board -> Bool -> Board
-startMiniMax board currentPlayer =
-    let 
-        -- show all availible next moves
-        boardsWithAvailibleMoves = showAllAvalibleMoves
-                                                board 
-                                                (changePlayer currentPlayer)
 
-        --                                                 
-        miniMaxResultsWithBoards = (Debug.log "" boardsWithAvailibleMoves)
-                            |> List.map
-                                (\ elm ->
-                                    ( elm
-                                    , miniMax
-                                        board
-                                        (changePlayer currentPlayer)
-                                    )  
-                                )
-        
-        maximum = findMaxFromBoards
-                            miniMaxResultsWithBoards  
-                            (fakeBoard, -1)
-    in
-        fst maximum
 
 -- MODEL
 
@@ -418,9 +420,10 @@ update msg model =
 
         AImove ->
             ({model | board
-                        = startMiniMax
-                            model.board
-                            model.currentMove
+                        = fst
+                            miniMax
+                                model.board
+                                model.currentMove
                     , currentMove = True
                     , list = model.list
                     , winner = model.winner
