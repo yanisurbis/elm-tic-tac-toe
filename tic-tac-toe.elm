@@ -22,6 +22,7 @@ import Debug
 type alias Board =
     Array.Array (Maybe Bool)
 
+-- start with empty board
 board : Board
 board =
     Array.fromList
@@ -30,6 +31,7 @@ board =
         , Nothing, Nothing, Nothing
         ]
 
+-- fake board as start parametr for several functions
 fakeBoard : Board
 fakeBoard =
     Array.fromList
@@ -38,50 +40,42 @@ fakeBoard =
         , Nothing, Nothing, Nothing
         ] 
 
--- get elements from board 
-getElementsFromBoard : Board -> List Int -> List (Maybe (Maybe Bool))
-getElementsFromBoard board pathToCheck =
-    let
-        elements: List (Maybe (Maybe Bool))
-        elements =
-            pathToCheck
-                |> List.map
-                    (\elm -> 
-                        Array.get elm board
-                    )
-    in
-        elements
+-- get elements from board by indexes
+getElementsFromBoard : Board -> List Int -> List (Maybe Bool)
+getElementsFromBoard board indexesOfElements =
+    indexesOfElements
+        -- get elements
+        |> List.map
+            (\elm -> 
+                Array.get elm board
+            )
+        -- unwrap elements from maybe
+        |> List.map
+            (\ elm ->
+                case elm of
+                    Just value ->
+                        value
+                    
+                    Nothing ->
+                        Nothing
+            )
 
-
-
--- check one path from pathsToCheck
-checkPath : Board -> List Int -> Maybe Bool
-checkPath board pathToCheck =
+-- checking if all of the elements of path are the same
+-- use this function to detect the winner of the game
+checkPathWinner : Board -> List Int -> Maybe Bool
+checkPathWinner board pathToCheck =
     -- list of indexes
     let
         -- get elements from board that are complied with path
-        elementsFromBoard : List (Maybe (Maybe Bool))
+        elementsFromBoard : List (Maybe Bool)
         elementsFromBoard =
             getElementsFromBoard
                 board
                 pathToCheck
-        
-        -- we don't want maybe around maybe 
-        unwrappedElementsFromBoard : List (Maybe Bool)
-        unwrappedElementsFromBoard =
-            elementsFromBoard
-            |> List.map
-                (\ elm ->
-                    case elm of
-                        Just value ->
-                            value
-                        
-                        Nothing ->
-                            Nothing
-                )
+            
 
         hasNothing =
-            unwrappedElementsFromBoard
+            elementsFromBoard
             |> List.any
                 (\ elm ->
                     case elm of
@@ -93,7 +87,7 @@ checkPath board pathToCheck =
                 ) 
 
         allCrosses = 
-            unwrappedElementsFromBoard
+            elementsFromBoard
             |> List.all
                 (\elm ->
                     case elm of
@@ -108,7 +102,7 @@ checkPath board pathToCheck =
                 )
 
         allZeros = 
-            unwrappedElementsFromBoard
+            elementsFromBoard
             |> List.all
                 (\elm ->
                     case elm of
@@ -129,32 +123,62 @@ checkPath board pathToCheck =
         else if allZeros == True then
             Just False
         else
+            -- path is full
             Nothing
 
 
+isXwinner : List (Maybe Bool) -> Bool
+isXwinner pathCheckRezults =
+    List.any
+        (\ elm ->
+            case elm of
+                Just value ->
+                    if value == True then
+                        True
+                    else
+                        False
+                Nothing ->
+                    False                    
+        )
+        pathCheckRezults
 
-checkBoard : Board -> List (List Int) -> Bool -> Bool
-checkBoard board pathsToCheck winner =
+
+
+isOwinner : List (Maybe Bool) -> Bool
+isOwinner pathCheckRezults =
+    List.any
+        (\ elm ->
+            case elm of
+                Just value ->
+                    if value == False then
+                        True
+                    else
+                        False
+                Nothing ->
+                    False                    
+        )
+        pathCheckRezults
+
+
+-- Just True if X is the winner
+-- Just False if O is the winner
+-- Nothing if we don't have the winner
+checkBoardWinner : Board -> List (List Int) -> Maybe Bool
+checkBoardWinner board pathsToCheck =
     let 
-        rezultOfCheck : List (Maybe Bool)
-        rezultOfCheck = 
+        
+        pathsCheckRezults = 
             pathsToCheck
             -- check every path
             |> List.map 
-                (checkPath board)
+                (checkPathWinner board)
     in
-        rezultOfCheck
-        |> List.any
-            (\ elm ->
-                case elm of
-                    Just value ->
-                        if value == winner then
-                            True
-                        else
-                            False
-                    Nothing ->
-                        False                    
-            )
+        if isXwinner pathsCheckRezults == True then
+            Just True
+        else if isOwinner pathsCheckRezults == True then
+            Just False
+        else 
+            Nothing
        
 
 -- is game finished?
@@ -206,18 +230,28 @@ getGameStatus board =
         --                                      board
         --                                      paths to check
         --                                      corresponding values for cross = True
-
-        xIsWinner : Bool
-        xIsWinner = checkBoard
+        winner : Maybe Bool
+        winner = checkBoardWinner
                         board
                         pathsToCheck
-                        True
         
-        oIsWinner : Bool
-        oIsWinner = checkBoard
-                        board
-                        pathsToCheck
+        xIsWinner =
+                case winner of
+                    Just True ->
+                        True
+                    Just False ->
                         False
+                    Nothing ->
+                        False
+        
+        oIsWinner =
+                case winner of
+                    Just True ->
+                        False
+                    Just False ->
+                        True
+                    Nothing ->
+                        False               
 
         -- is there any availible moves?
         isFull = boardIsFull
@@ -281,31 +315,33 @@ miniMax : Board -> Bool -> (Board, Int)
 miniMax board xShouldWin =
     let
         {xIsWinner, oIsWinner, boardIsFull} = getGameStatus board
+
+        
     in
         -- error
         if xIsWinner == True 
             && oIsWinner == True then
-            -1
+            Debug.log "1" (board, -1)
 
         -- the end, smbd is the winner
-        else if xIsWinner == True 
+        else if  xIsWinner == True 
                 && xShouldWin == True then
-            10
+            Debug.log "2" (board, 10)
         else if xIsWinner == True 
                 && xShouldWin == False then
-            -10
+            Debug.log "3" (board, -10)
         else if oIsWinner == True 
                 && xShouldWin == True then
-            -10
+            Debug.log "4" (board, -10)
         else if oIsWinner == True 
                 && xShouldWin == False then
-            10
+            Debug.log "5" (board, 10)
 
         -- the end, nobody is the winner
         else if boardIsFull == True 
                 && oIsWinner == False 
                 && xIsWinner == False then
-            0
+            Debug.log "6" (board, 0)
 
         -- NOT the end, run minimax
         else if boardIsFull == False
@@ -314,7 +350,7 @@ miniMax board xShouldWin =
             let 
                 boardsWithAvailibleMoves = getAllAvailableMoves
                                                 board 
-                                                (changePlayer xShouldWin)
+                                                xShouldWin
 
                 miniMaxResults = boardsWithAvailibleMoves
                                     |> List.map
@@ -323,9 +359,10 @@ miniMax board xShouldWin =
                                             ( boardWithNewMove
                                             -- snd because miniMax returns tuple
                                             , snd 
-                                                miniMax
+                                                ( miniMax
                                                     boardWithNewMove
                                                     (changePlayer xShouldWin)
+                                                )
                                             )  
                                         )
 
@@ -333,11 +370,12 @@ miniMax board xShouldWin =
                             miniMaxResults
                             (board, -1)                                    
             in
+                -- Debug.log "7" 
                 maximum
         
         -- error
         else 
-            -1
+            Debug.log "Error" (board, -1)
 
    
 
@@ -365,8 +403,11 @@ findMaxFromBoards boards startElement =
 
 type alias Model =
     { board : Board
+    -- delete in the future
     , list : List Bool
+    -- winner if we have: True = X, False = O, Nothing = we have no winner
     , winner : Maybe Bool
+    -- True = X, False = O
     , currentMove : Bool
     }
 
@@ -421,9 +462,10 @@ update msg model =
         AImove ->
             ({model | board
                         = fst
-                            miniMax
+                            ( miniMax
                                 model.board
-                                model.currentMove
+                                False
+                            )
                     , currentMove = True
                     , list = model.list
                     , winner = model.winner
@@ -525,55 +567,56 @@ displayBoard board =
                     [ text "choose this board" ]
             ]
 
+getTextStatus : Board -> String
+getTextStatus board =
+    let
+        {xIsWinner, oIsWinner, boardIsFull} = getGameStatus board
+
+        winner = 
+            if xIsWinner == True then
+                "X IS WINNER"
+            else if oIsWinner == True then
+                "O IS WINNER"
+            else "WINNER IS UNDEFINED"
+
+        isFull =
+            if boardIsFull == True then
+                "BOARD IS FULL"
+            else
+                "BOARD IS NOT FULL"
+    
+    in  
+        winner ++ " " ++ isFull
+
 view : Model -> Html Msg
 view model = 
     pre []
     (
-        
-        ((showAllAvalibleMoves 
-                    model.board
-                    True
-                    )
-                |> List.map
-                    displayBoard
-            )
+        if Debug.log "test" model.currentMove == True then
+            ((getAllAvailableMoves
+                        model.board
+                        True
+                        )
+                    |> List.map
+                        displayBoard
+                )
+        else
+            []
         |> List.append
-            [ h1 []
-                [ case isFinished model.board of
-                    (True, True) ->
-                        text ("Cross and Zeros")
-                    (True, False) ->
-                        text ("Cross only")
-                    (False, True) ->
-                        text ("Zeros only")
-                    (False, False) ->
-                        text ("Nobody")
+            ([ div []
+                [ 
+                    text(getTextStatus model.board)                    
                 ]
-            , button
-                [ onClick GenerateNewBoard ]
-                [ text "Generate Random Board" ]           
-            ]      
+            ])      
         |> List.append
-        ([ displayBoard model.board
-        , button 
-            [ onClick AImove ]
-            [ text "AI move" ]
-        , div []
-            [ text (model.list
-                        |> List.map
-                            (\ elm ->
-                                if elm == True then
-                                    "T"
-                                else
-                                    "F"
-                            )
-                        |> List.foldr
-                            (++)
-                            ""
-                    )
-            ]
-        ])
-                  
+            ([ displayBoard model.board
+            , if model.currentMove == False then
+                button 
+                    [ onClick AImove ]
+                    [ text "AI move" ]
+              else
+                div [] []
+            ])                  
     )
 main =
     Html.program { init = init
