@@ -612,34 +612,65 @@ getTextStatus board =
 
 view : Model -> Html Msg
 view model = 
-    pre []
-    (
-        if Debug.log "test" model.currentMove == True then
-            ((getAllAvailableMoves
-                        model.board
-                        True
-                        )
-                    |> List.map
-                        displayBoard
-                )
-        else
-            []
-        |> List.append
-            ([ div []
-                [ 
-                    text(getTextStatus model.board)                    
-                ]
-            ])      
-        |> List.append
-            ([ displayBoard model.board
-            , if model.currentMove == False then
-                button 
-                    [ onClick AImove ]
-                    [ text "AI move" ]
-              else
-                div [] []
-            ])                  
-    )
+    -- pre []
+    -- (
+    --     if Debug.log "test" model.currentMove == True then
+    --         ((getAllAvailableMoves
+    --                     model.board
+    --                     True
+    --                     )
+    --                 |> List.map
+    --                     displayBoard
+    --             )
+    --     else
+    --         []
+    --     |> List.append
+    --         ([ div []
+    --             [ 
+    --                 text(getTextStatus model.board)                    
+    --             ]
+    --         ])      
+    --     |> List.append
+    --         ([ displayBoard model.board
+    --         , if model.currentMove == False then
+    --             button 
+    --                 [ onClick AImove ]
+    --                 [ text "AI move" ]
+    --           else
+    --             div [] []
+    --         ])                  
+    -- )
+    div [ myStyle1 ]
+        [ div 
+            [ styleBoardElement ]
+            [ text "1" ] 
+        , div 
+            [ styleBoardElement ]
+            [ text "1" ]
+        , div 
+            [ styleBoardElement ]
+            [ text "1" ] 
+        , div 
+            [ styleBoardElement ]
+            [ text "1" ] 
+        , div 
+            [ styleBoardElement ]
+            [ text "1" ] 
+        , div 
+            [ styleBoardElement ]
+            [ text "1" ] 
+        , div 
+            [ styleBoardElement ]
+            [ text "1" ] 
+        , div 
+            [ styleBoardElement ]
+            [ text "1" ] 
+        , div 
+            [ styleBoardElement ]
+            [ text "1" ]  
+        ]
+
+
 main =
     Html.program { init = init
                     , view = view
@@ -647,4 +678,17 @@ main =
                     , subscriptions = subscriptions
                 }
 
+myStyle1 =
+    style
+    [ ("display", "flex")
+    , ("width", "400px")
+    , ("flex-wrap", "wrap")
+    , ("border", "1px solid red")
+    ]
 
+styleBoardElement =
+    style
+    [ ("width", "100px")
+    , ("height", "100px")
+    , ("border", "1px solid black")
+    ]
