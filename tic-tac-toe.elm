@@ -38,7 +38,16 @@ fakeBoard =
         [ Nothing, Nothing, Nothing
         , Nothing, Nothing, Nothing
         , Nothing, Nothing, Nothing
-        ] 
+        ]
+
+-- test board 
+testBoard : Board
+testBoard =
+    Array.fromList
+        [ Just False, Nothing, Just True
+        , Just True,  Nothing, Nothing
+        , Just True, Just False, Just False 
+        ]         
 
 -- get elements from board by indexes
 getElementsFromBoard : Board -> List Int -> List (Maybe Bool)
@@ -303,54 +312,48 @@ changeBoard board index currentPlayer =
 
 -- AI
 
-changePlayer : Bool -> Bool
-changePlayer player =
+changeTurnTaker : Bool -> Bool
+changeTurnTaker player =
     if player == True then
         False
     else
         True
 
+isGameOver : GameStatus -> Bool
+isGameOver {xIsWinner, oIsWinner, boardIsFull} =
+    if boardIsFull == True 
+        || xIsWinner == True 
+        || oIsWinner == True 
+    then
+        True
+    else 
+        False
 
-miniMax : Board -> Bool -> (Board, Int)
-miniMax board xShouldWin =
+getPlayerScore : GameStatus -> Bool -> Int
+getPlayerScore {xIsWinner, oIsWinner, boardIsFull} startTurnTaker =
+    if xIsWinner == True && startTurnTaker == True then
+        10
+    else if oIsWinner == True && startTurnTaker == False then
+        10 
+    else if xIsWinner == True && startTurnTaker == False then
+        -10
+    else if oIsWinner == True && startTurnTaker == False then
+        -10
+    else
+        0
+
+miniMax : Board -> Bool -> Bool -> (Board, Int)
+miniMax board startTurnTaker currentTurnTaker =
     let
-        {xIsWinner, oIsWinner, boardIsFull} = getGameStatus board
-
-        
+        gameStatus = getGameStatus board
     in
-        -- error
-        if xIsWinner == True 
-            && oIsWinner == True then
-            Debug.log "1" (board, -1)
-
-        -- the end, smbd is the winner
-        else if  xIsWinner == True 
-                && xShouldWin == True then
-            Debug.log "2" (board, 10)
-        else if xIsWinner == True 
-                && xShouldWin == False then
-            Debug.log "3" (board, -10)
-        else if oIsWinner == True 
-                && xShouldWin == True then
-            Debug.log "4" (board, -10)
-        else if oIsWinner == True 
-                && xShouldWin == False then
-            Debug.log "5" (board, 10)
-
-        -- the end, nobody is the winner
-        else if boardIsFull == True 
-                && oIsWinner == False 
-                && xIsWinner == False then
-            Debug.log "6" (board, 0)
-
-        -- NOT the end, run minimax
-        else if boardIsFull == False
-                && oIsWinner == False
-                && xIsWinner == False then
+        if (isGameOver gameStatus) == True then
+            (board, getPlayerScore gameStatus startTurnTaker)
+        else
             let 
                 boardsWithAvailibleMoves = getAllAvailableMoves
                                                 board 
-                                                xShouldWin
+                                                currentTurnTaker
 
                 miniMaxResults = boardsWithAvailibleMoves
                                     |> List.map
@@ -361,22 +364,23 @@ miniMax board xShouldWin =
                                             , snd 
                                                 ( miniMax
                                                     boardWithNewMove
-                                                    (changePlayer xShouldWin)
+                                                    startTurnTaker
+                                                    (changeTurnTaker currentTurnTaker)
                                                 )
                                             )  
                                         )
-
-                maximum = findMaxFromBoards
+                minimax =
+                    if not (startTurnTaker == currentTurnTaker) then
+                        findMinFromBoards
                             miniMaxResults
-                            (board, -1)                                    
+                            (fakeBoard, 100)
+                    else
+                        findMaxFromBoards
+                            miniMaxResults
+                            (fakeBoard, -100)                                    
             in
                 -- Debug.log "7" 
-                maximum
-        
-        -- error
-        else 
-            Debug.log "Error" (board, -1)
-
+                minimax
    
 
 findMaxFromBoards : List (Board, Int) -> (Board, Int) -> (Board, Int)
@@ -397,6 +401,23 @@ findMaxFromBoards boards startElement =
     in
         maxElement
 
+findMinFromBoards : List (Board, Int) -> (Board, Int) -> (Board, Int)
+findMinFromBoards boards startElement =
+    let 
+
+        maxElement
+            = List.foldl
+                (\ elm startValue ->
+                    if snd elm < snd startValue then
+                        elm
+                    else
+                        startValue
+                )
+                startElement
+                boards
+
+    in
+        maxElement
 
 
 -- MODEL
@@ -416,7 +437,7 @@ initModel =
     { board = board
     , list = []
     , winner = Nothing
-    , currentMove = True
+    , currentMove = False
     }
 
 init : (Model, Cmd Msg)
@@ -464,7 +485,8 @@ update msg model =
                         = fst
                             ( miniMax
                                 model.board
-                                False
+                                model.currentMove
+                                model.currentMove
                             )
                     , currentMove = True
                     , list = model.list
