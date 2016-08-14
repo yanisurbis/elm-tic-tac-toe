@@ -11,6 +11,7 @@ import List
 import Mouse
 import Random
 import Debug
+import Maybe
 
 -- ALIASES
 
@@ -438,6 +439,7 @@ initModel =
     , list = []
     , winner = Nothing
     , currentMove = False
+    , style = styleBoardElements
     }
 
 init : (Model, Cmd Msg)
@@ -453,6 +455,7 @@ type Msg
     | CreateBoard (List Bool)
     | Choose Board
     | AImove
+    | ChangeStyle Int
 
 -- update : Msg -> Model -> Model
 
@@ -466,7 +469,14 @@ update msg model =
             (model, Random.generate CreateBoard (Random.list 18 Random.bool))
 
         CreateBoard list ->
-            (Model (createBoard list) list model.winner model.currentMove, Cmd.none)
+            ( Model 
+                (createBoard list) 
+                list 
+                model.winner 
+                model.currentMove 
+                model.style
+            , Cmd.none
+            )
 
         MouseMsg position ->
             (model, Cmd.none)
@@ -476,6 +486,7 @@ update msg model =
                     , currentMove = False
                     , list = model.list
                     , winner = model.winner
+                    , style = model.style
                 }
                 , Cmd.none
             )
@@ -491,8 +502,18 @@ update msg model =
                     , currentMove = True
                     , list = model.list
                     , winner = model.winner
+                    , style = model.style
             }, Cmd.none)
             -- (model, Cmd.none)
+
+        ChangeStyle index ->
+            ({model | style =
+                        changeStyle index model.style
+                    , board = model.board
+                    , currentMove = model.currentMove
+                    , list = model.list
+                    , winner = model.winner
+            }, Cmd.none)
         
 
 createBoard : List Bool -> Board
@@ -558,7 +579,7 @@ displayRow board =
         ""
     |> text
 
-numberOfElementInRow = 3
+
 
 displayBoard : Board -> Html Msg
 displayBoard board =
@@ -642,31 +663,33 @@ view model =
     -- )
     div [ myStyle1 ]
         [ div 
-            [ styleBoardElement ]
+            [ getStyle 0
+            
+            ]
             [ text "1" ] 
         , div 
-            [ styleBoardElement ]
+            [ getStyle 1 ]
             [ text "1" ]
         , div 
-            [ styleBoardElement ]
+            [ getStyle 2 ]
             [ text "1" ] 
         , div 
-            [ styleBoardElement ]
+            [ getStyle 3 ]
             [ text "1" ] 
         , div 
-            [ styleBoardElement ]
+            [ getStyle 4 ]
             [ text "1" ] 
         , div 
-            [ styleBoardElement ]
+            [ getStyle 5 ]
             [ text "1" ] 
         , div 
-            [ styleBoardElement ]
+            [ getStyle 6 ]
             [ text "1" ] 
         , div 
-            [ styleBoardElement ]
+            [ getStyle 7 ]
             [ text "1" ] 
         , div 
-            [ styleBoardElement ]
+            [ getStyle 8 ]
             [ text "1" ]  
         ]
 
@@ -691,4 +714,29 @@ styleBoardElement =
     [ ("width", "100px")
     , ("height", "100px")
     , ("border", "1px solid black")
+    , ("background-color", "yellow")
     ]
+
+clearStyle =
+    [ ("width", "100px")
+    , ("height", "100px")
+    , ("border", "1px solid black")
+    ]
+
+numberOfElementInRow = 3
+
+styleBoardElements =
+    Array.repeat
+        (numberOfElementInRow * numberOfElementInRow)
+        styleBoardElement
+
+getStyle index =
+    Maybe.withDefault
+        styleBoardElement
+        (Array.get index styleBoardElements)
+
+changeStyle index styles =
+    Array.set
+        index
+        ( style (("background-color", "red") :: clearStyle ))
+        styles
